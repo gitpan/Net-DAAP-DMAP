@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name: Net-DAAP-DMAP
-version: 1.22
+version: 1.23
 author:
   - |-
     Nathan Torkington, <nathan AT torkington.com>.  For support, join the
@@ -20,5 +20,5 @@ build_requires:
 provides:
   Net::DAAP::DMAP:
     file: lib/Net/DAAP/DMAP.pm
-    version: 1.22
+    version: 1.23
 generated_by: Module::Build version 0.25
