@@ -1,0 +1,24 @@
+--- #YAML:1.0
+name: Net-DAAP-DMAP
+version: 1.20
+author:
+  - |-
+    Nathan Torkington, <nathan AT torkington.com>.  For support, join the
+    DAAP developers mailing list by sending mail to <daap-devel-subscribe
+    AT develooper.com>.
+  - |-
+    Richard Clamp <richardc@unixbeard.net> is the current maintainer, and
+    took over in July 2004.
+abstract: |-
+  Perl module for reading and writing DAAP structures
+license: perl
+requires:
+  Math::BigInt: 0
+  perl: 5.006
+build_requires:
+  Test::More: 0
+provides:
+  Net::DAAP::DMAP:
+    file: lib/Net/DAAP/DMAP.pm
+    version: 1.20
+generated_by: Module::Build version 0.25
