@@ -1,6 +1,6 @@
 package Net::DAAP::DMAP;
 use strict;
-our $VERSION = '1.20';
+our $VERSION = '1.21';
 
 =pod
 
@@ -18,7 +18,8 @@ Net::DAAP::DMAP - Perl module for reading and writing DAAP structures
   $array_ref = dmap_unpack($dmap);           # knows about data types
   $node      = dmap_seek($array_ref, $path);
 
-  $flattened = dmap_flatten($array_ref);     # convert to path = data format
+  $flattened = dmap_flatten($array_ref);     # convert to path = data formta
+  $flat_list = dmap_flat_list($array_ref);   # convert to [ path, data ] format
   $xml       = dmap_to_xml($dmap);           # convert to XML fragment
   $dmap      = dmap_pack($dmap);             # convert to DMAP packet
   update_content_codes($unpacked_content_codes_response);
@@ -27,11 +28,10 @@ Net::DAAP::DMAP - Perl module for reading and writing DAAP structures
 
 =head2 WARNING!
 
-Until 1.0, I reserve the right to change the interface.  In
+Until 2.0, I reserve the right to change the interface.  In
 particular, I think C<dmap_flatten>, C<dmap_to_hash_ref>, and
-C<dmap_to_array_ref> are likely
-to disappear.  And I suspect the hive brain of Perl can come up with a
-better data structure than I have.
+C<dmap_to_array_ref> are likely to disappear.  And I suspect the hive
+brain of Perl can come up with a better data structure than I have.
 
 =head2 Back to the Description
 
@@ -122,6 +122,18 @@ a slash-separated path.  For example:
 You can use C<grep> and regexps to find data if that's the way your
 mind works.
 
+C<dmap_flatten> has a similar looking cousin called C<dmap_flat_list>,
+which returns an array of "I<path> => I<value>" pairs.  For example:
+
+
+  [
+    '/dmap.loginresponse/dmap.status' => 200,
+    '/dmap.loginresponse/dmap.sessionid' => 2393,
+  ]
+
+You can then turn this into a hash (which may of course lose you the
+first elements), or iterate over it in pairs, if that's easier.
+
 You can, but don't have to, update the tables of field names ("content
 codes") and data types.  DAAP offers a request that returns a packet
 of content codes.  Feed that packet to C<update_content_codes>.
@@ -160,7 +172,7 @@ use Carp;
 
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(dmap_to_hash_ref dmap_to_array_ref update_content_codes
-                    dmap_unpack dmap_to_xml dmap_seek dmap_flatten dmap_pack );
+                    dmap_unpack dmap_to_xml dmap_seek dmap_flatten dmap_flat_list dmap_pack );
 our %EXPORT_TAGS = ( 'all' => \@EXPORT_OK );
 
 our $Types;
@@ -229,6 +241,26 @@ sub flatten_traverse {
     }
 }
 
+sub dmap_flat_list {
+    return @{ flat_list_traverse([], "", shift) };
+}
+
+sub flat_list_traverse {
+    my ($list, $prefix, $struct) = @_;
+    foreach my $ref (@$struct) {
+        for (my $i=0; $i < @$ref; $i+=2) {
+            my ($tag, $data) = ($ref->[$i], $ref->[$i+1]);
+
+            if (ref $data eq 'ARRAY') {
+                flat_list_traverse($list, "$prefix/$tag", $data);
+            } else {
+                push @$list, "$prefix/$tag", $data;
+            }
+        }
+    }
+    return $list;
+}
+
 
 sub dmap_unpack {
     my $buf = shift;
@@ -238,6 +270,9 @@ sub dmap_unpack {
         my ($tag, $len) = unpack("a4N", $buf);
         my $data = substr($buf, 8, $len);
         my $type = $Types->{$tag}{TYPE};
+        unless ($type) {
+            warn "Don't know about the type of $tag";
+        }
 
         if ($type == 12) {
             $data = dmap_unpack($data);
@@ -313,7 +348,6 @@ sub dmap_seek {
     return $struct;
 }
 
-my %by_name;
 sub update_content_codes {
   my $array = shift;
   my $short;
@@ -336,14 +370,13 @@ sub update_content_codes {
   }
 
   $Types = $short;
-  %by_name = map { $_->{NAME} => $_ } values %$Types;
 }
 
-%by_name = map { $_->{NAME} => $_ } values %$Types;
 sub dmap_pack {
     my $struct = shift;
     my $out = '';
 
+    my %by_name = map { $_->{NAME} => $_ } values %$Types;
     for my $pair (@$struct) {
         my ($name, $value) = @$pair;
         # dmap_unpack doesn't populate the name when its decoded
@@ -354,7 +387,7 @@ sub dmap_pack {
             next;
         }
         # or, it may be we don't know what kind of thing this is
-        unless (exists $by_name{ $name }) {
+        unless ($by_name{ $name }) {
             carp "we don't know the type for '$name' elements - skipping";
             next;
         }
