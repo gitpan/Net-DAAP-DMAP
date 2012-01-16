@@ -1,7 +1,7 @@
 package Net::DAAP::DMAP;
 use strict;
 our $NOISY = 0;
-our $VERSION = '1.26';
+our $VERSION = '1.27';
 
 =pod
 
@@ -387,7 +387,7 @@ sub dmap_pack {
     my $struct = shift;
     my $out = '';
 
-    my %by_name = map { $_->{NAME} => $_ } values %$Types;
+    my %by_name = map { %{$_} ? ( $_->{NAME} => $_ ) : () } values %$Types;
     for my $pair (@$struct) {
         my ($name, $value) = @$pair;
         # dmap_unpack doesn't populate the name when its decoded
@@ -407,6 +407,9 @@ sub dmap_pack {
         my $type = $by_name{ $name }{TYPE};
         #print "$name => $tag $type $Type_To_Unpack{$type}\n";
         #$SIG{__WARN__} = sub { die @_ };
+        if ($type == 9 && eval { require Encode; 1 }) {
+            $value = Encode::encode('utf-8', $value);
+        }
         if ($type == 12) { # container
             $value = dmap_pack( $value );
         }

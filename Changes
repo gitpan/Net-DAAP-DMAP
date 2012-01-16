@@ -1,3 +1,6 @@
+1.27	Monday 16th January, 2012
+	Correctly emit utf-8 bytes for type 9 (text).
+
 1.26	Wednesday 1st September, 2004
 	Fixed the email address of the daap-dev list.
 
